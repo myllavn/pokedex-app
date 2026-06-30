@@ -1,5 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, Image, TouchableOpacity, TextInput, StyleSheet } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Animated,
+} from "react-native";
 import { db } from "../services/firebase";
 import { collection, addDoc } from "firebase/firestore";
 
@@ -29,6 +37,8 @@ export default function PokedexScreen({ navigation }) {
     normal: "#A8A77A",
   };
 
+  const escala = useRef(new Animated.Value(0.7)).current;
+
   const fetchPokemon = async (busca) => {
     try {
       const response = await fetch(
@@ -36,17 +46,23 @@ export default function PokedexScreen({ navigation }) {
       );
       const data = await response.json();
 
-      const poke = {
+      setPokemon({
         id: data.id,
         nome: data.name,
         imagem: data.sprites.front_default,
         tipo1: data.types[0]?.type.name,
         tipo2: data.types[1]?.type.name,
-      };
+      });
 
-      setPokemon(poke);
+      escala.setValue(0.7);
+
+      Animated.spring(escala, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }).start();
     } catch (error) {
-      console.log("Erro ao buscar Pokémon:", error);
+      console.log(error);
     }
   };
 
@@ -55,63 +71,63 @@ export default function PokedexScreen({ navigation }) {
   }, [id]);
 
   const buscarPorNome = () => {
-    if (nomeBusca.trim() !== "") {
+    if (nomeBusca.trim()) {
       fetchPokemon(nomeBusca.toLowerCase());
     }
   };
 
   const favoritarPokemon = async () => {
-  if (!pokemon) return;
+    if (!pokemon) return;
 
-        try {
-            await addDoc(collection(db, "favoritos"), {
-            idPokemon: pokemon.id,
-            nome: pokemon.nome,
-            imagem: pokemon.imagem,
-            tipo1: pokemon.tipo1,
-            tipo2: pokemon.tipo2 || "",
-            });
+    try {
+      await addDoc(collection(db, "favoritos"), {
+        idPokemon: pokemon.id,
+        nome: pokemon.nome,
+        imagem: pokemon.imagem,
+        tipo1: pokemon.tipo1,
+        tipo2: pokemon.tipo2 || "",
+      });
 
-            alert("Pokémon salvo nos favoritos!");
-            } catch (error) {
-            console.log(error);
-            alert("Erro ao salvar.");
-        }
-    };
-
+      alert("Salvo nos favoritos!");
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Pokédex 🔥</Text>
+      <Text style={styles.title}>🔥 Pokédex</Text>
 
-      {/* BUSCA */}
-      <View style={styles.areaBusca}>
-        <TextInput
-          style={styles.input}
-          placeholder="Nome do Pokémon"
-          value={nomeBusca}
-          onChangeText={setNomeBusca}
+      <TextInput
+        style={styles.input}
+        placeholder="Nome ou ID do Pokémon "
+        value={nomeBusca}
+        onChangeText={setNomeBusca}
+      />
+
+      <TouchableOpacity style={styles.btn} onPress={buscarPorNome}>
+        <Text style={styles.txtBtn}>Buscar 🔍</Text>
+      </TouchableOpacity>
+
+      {pokemon?.imagem && (
+        <Animated.Image
+          source={{ uri: pokemon.imagem }}
+          style={[
+            styles.img,
+            {
+              transform: [{ scale: escala }],
+            },
+          ]}
         />
+      )}
 
-        <TouchableOpacity style={styles.btn} onPress={buscarPorNome}>
-          <Text style={styles.txtBtn}>Buscar</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.btn} onPress={favoritarPokemon}>
+        <Text style={styles.txtBtn}>Favoritar ❤️</Text>
+      </TouchableOpacity>
 
-      {/* IMAGEM */}
-      <View style={styles.areaImagem}>
-        {pokemon?.imagem && (
-          <Image source={{ uri: pokemon.imagem }} style={styles.imagem} />
-        )}
-      </View>
+      <Text style={styles.id}>ID: {pokemon?.id}</Text>
+      <Text style={styles.nome}>{pokemon?.nome}</Text>
 
-      {/* INFO */}
-      <Text>ID: {pokemon?.id}</Text>
-      <Text style={styles.nome}>
-        {pokemon?.nome?.toUpperCase()}
-      </Text>
-
-      {/* TIPOS */}
       <View style={styles.tipos}>
         <Text
           style={[
@@ -134,11 +150,12 @@ export default function PokedexScreen({ navigation }) {
         )}
       </View>
 
-      {/* BOTÕES */}
-      <View style={styles.areaBtns}>
+      <View style={styles.row}>
         <TouchableOpacity
           style={styles.btn}
-          onPress={() => setId((prev) => Math.max(1, prev - 1))}
+          onPress={() =>
+            setId((p) => Math.max(1, p - 1))
+          }
         >
           <Text style={styles.txtBtn}>Anterior</Text>
         </TouchableOpacity>
@@ -147,22 +164,17 @@ export default function PokedexScreen({ navigation }) {
           <Text style={styles.txtBtn}>Início</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.btn}
-          onPress={() => setId((prev) => prev + 1)}
-        >
+        <TouchableOpacity style={styles.btn} onPress={() => setId((p) => p + 1)}>
           <Text style={styles.txtBtn}>Próximo</Text>
         </TouchableOpacity>
       </View>
 
-      {/* NAV */}
-      <View style={styles.nav}>
-        <TouchableOpacity onPress={() => navigation.navigate("Home")}>
-          <Text>🏠 Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("Favoritos")}>
-          <Text>⭐ Favoritos</Text>
+      <View style={styles.center}>
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={() => navigation.navigate("Favoritos")}
+        >
+          <Text style={styles.txtBtn}>⭐ Favoritos ⭐</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -172,66 +184,89 @@ export default function PokedexScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f0bc",
+    padding: 20,
     alignItems: "center",
-    paddingTop: 50,
+    backgroundColor: "#f2f0bc",
   },
+
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "bold",
-    marginBottom: 10,
   },
-  areaBusca: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 10,
-  },
+
   input: {
-    borderWidth: 1,
-    borderColor: "#999",
+    borderWidth: 2,
+    borderColor: "#c25843",
+    backgroundColor: "#ffffff65",
+    width: "80%",
     padding: 8,
-    width: 180,
+    marginVertical: 10,
     borderRadius: 8,
+    fontSize: 16,
   },
+
   btn: {
-    backgroundColor: "#c25843",
-    padding: 10,
-    borderRadius: 10,
+    minWidth: 75,
+    backgroundColor: "#c24343cf",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 25,
+    marginVertical: 6,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
   },
+
   txtBtn: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 15,
   },
-  areaImagem: {
+
+  img: {
+    width: 180,
+    height: 180,
     marginVertical: 10,
   },
-  imagem: {
-    width: 150,
-    height: 150,
-  },
+
   nome: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
+    marginTop: 5,
   },
+
+  id: {
+    fontSize: 17,
+    fontWeight: "bold",
+    marginTop: 10,
+    color: "#763b3b",
+  },
+
   tipos: {
     flexDirection: "row",
-    gap: 10,
-    marginVertical: 10,
-  },
-  tipo: {
-    padding: 6,
-    borderRadius: 10,
-    color: "#fff",
-    textTransform: "capitalize",
-  },
-  areaBtns: {
-    flexDirection: "row",
-    gap: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    height: 40,
     marginTop: 10,
   },
-  nav: {
+
+  tipo: {
+    color: "#fff",
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 15,
+    fontWeight: "bold",
+    textTransform: "capitalize",
+    marginHorizontal: 4,
+  },
+
+  row: {
     flexDirection: "row",
-    gap: 20,
-    marginTop: 20,
+    justifyContent: "space-between",
+    width: "80%",
+    marginTop: 15,
   },
 });

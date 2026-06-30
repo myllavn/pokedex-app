@@ -16,7 +16,7 @@ export default function HomeScreen({ navigation }) {
         style={styles.btn}
         onPress={() => navigation.navigate("Favoritos")}
       >
-        <Text style={styles.txt}>Favoritos</Text>
+        <Text style={styles.txt}>⭐ Favoritos ⭐</Text>
       </TouchableOpacity>
     </View>
   );
@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   btn: {
-    backgroundColor: "#c25843",
+    backgroundColor: "#c24343cf",
     padding: 12,
     margin: 10,
     borderRadius: 10,
